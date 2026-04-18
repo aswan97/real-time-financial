@@ -1,0 +1,1 @@
+# Going to be using a Random forrest model for the machine learning part
