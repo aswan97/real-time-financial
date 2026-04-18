@@ -1,0 +1,91 @@
+# Defining all our services
+services:
+
+  # Kafka Service
+  kafka:
+    image: confluentinc/cp-kafka:7.9.0
+    container_name: kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092" # External host access
+      - "9093:9093" # Internal cluster communication
+    
+    environment:
+      # KRaft identity
+      KAFKA_NODE_ID: 1 # Unique node identifier to identify each server in the cluster (broker, controller)
+      KAFKA_PROCESS_ROLES: broker,controller # broker = storage layer where messages are stored, controller = manages the state of the cluster
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093 # <node_id>@<container>:<internal port>
+
+      # Listeners 
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092 # Where the broker should be listening (external cluster port)
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+ 
+      # Topic Defaults
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_NUM_PARTITIONS: 3
+    
+      # Storage
+      KAFKA_LOG_DIRS: /var/lib/kafka/data 
+
+      # Cluster ID
+      CLUSTER_ID: "MkU55EVBNTcwNTJENDM9Qk"
+
+    # Defining the storage volume
+    volumes:
+    - kafka_data:/var/lib/kafka/data
+
+    # Health check of the cluster 
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "kafka:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Service to create the topic once the kafka container is healthy
+  #kafka-init:
+  #  image: confluentinc/cp-kafka:7.9.0
+  #  container_name: kafka-init
+  #  depends_on:
+  #    kafka:
+  #      condition: service_healthy
+  #  volumes:
+  #    - /Users/andrewswan/Documents/python_real_time/kafka:/kafka # mounts your local folder into the container, using the full path
+  #  command: "bash /kafka/setup-topics.sh"
+  #  restart: on-failure # retries if Kafka isn't quite ready yet
+  
+
+  # Defining the KAFKA UI service to access locally
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  python-producer:
+    build: /Users/andrewswan/Documents/projects/real_time_financial/src/producer # Points to the directory containing your Dockerfile
+    depends_on:
+      kafka:
+        condition: service_healthy  # Waits for the Kafka healthcheck to pass
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - TOPIC_NAME=websocket-stream
+    restart: on-failure
+ 
+volumes:
+  kafka_data:
+    driver: local
