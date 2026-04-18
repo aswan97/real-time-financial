@@ -1,1 +1,1 @@
-# Going to be using a Random forrest model for the machine learning part
+# Going to be using a Random forest model for the machine learning part
