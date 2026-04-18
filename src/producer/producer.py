@@ -7,8 +7,8 @@ STREAM_URL = "wss://advanced-trade-ws.coinbase.com/ws"
 
 SUBSCRIBE_MSG = json.dumps({
     "type": "subscribe",
-    "product_ids": ["BTC-USD"],
-    "channel": "market_trades"
+    "product_ids": ["BTC-USD", "USDT-USD", "ETH-USD"],
+    "channel": "level2"
 })
 
 trade_stream: list[float] = []
@@ -16,27 +16,31 @@ trade_stream_lock = asyncio.Lock()
 
 # Kafka producer config
 producer = Producer({
-    "bootstrap.servers": "kafka:9092"  # host machine connects via localhost
+    "bootstrap.servers": "kafka:9092",  # host machine connects via localhost
+    "queue.buffering.max.messages": 100000,
+    "batch.num.messages": 1000, # Smaller batches of messages
+    "batch.size": 65536, # Max batch size of 64KB
+    "linger.ms": 50, # Waiting for 50ms
+    "compression.type": "snappy" # Setting the compression type
 })
 
 async def consume_event_stream():
     while True:
         try:
             print("Connecting...")
-            async with websockets.connect(STREAM_URL) as ws:
+            async with websockets.connect(STREAM_URL, max_size=100*1024*1024) as ws:
                 await ws.send(SUBSCRIBE_MSG)
                 print("Connected!")
                 async for message in ws:
                     try:
                         payload = json.loads(message)
-                        trades = payload.get("events", [{}])[0].get("trades", [])
-                        for trade in trades:
-                            price = trade['price']
-                            size = trade['size']
-                            time = trade['time']
+                        product_id, updates = payload.get("events", [{}])[0]['product_id'], payload.get("events", [{}])[0].get("updates", [])
+                        for trade in updates:
+                            price = trade['price_level']
+                            quantity = trade['new_quantity']
+                            time = trade['event_time']
                             if price is not None:
-                                print(f"Raw price received: {price}")
-                                await process_event(float(price), float(size), str(time))
+                                await process_event(product_id, float(price), float(quantity), str(time))
                     except (json.JSONDecodeError, ValueError):
                         continue
         except (websockets.WebSocketException, asyncio.CancelledError) as exc:
@@ -46,9 +50,8 @@ async def consume_event_stream():
             await asyncio.sleep(5)
 
 
-async def process_event(value: float, size: float, time: str):
+async def process_event(key, value: float, size: float, time: str):
     async with trade_stream_lock:
-        print(f"Trade Price: {value}, Trade Size: {size}, Trade Time: {time}")
 
         # Build the message payload
         message = json.dumps({
@@ -60,6 +63,7 @@ async def process_event(value: float, size: float, time: str):
         # Produce to Kafka (non-blocking)
         producer.produce(
             topic="websocket-stream",
+            key=str(key),
             value=message.encode("utf-8")
         )
         producer.poll(0)  # Trigger delivery callbacks without blocking
