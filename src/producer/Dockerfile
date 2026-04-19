@@ -8,4 +8,4 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-CMD ["python", "producer.py"]
+CMD ["python", "producer_weather.py"]

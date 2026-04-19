@@ -87,7 +87,7 @@ services:
         condition: service_healthy  # Waits for the Kafka healthcheck to pass
     environment:
       - KAFKA_BROKER=kafka:9092
-      - TOPIC_NAME=websocket-stream
+      - TOPIC_NAME=polling-weather
     restart: on-failure
 
   #postgres:

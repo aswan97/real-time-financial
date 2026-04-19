@@ -6,5 +6,6 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "confluent-kafka==2.14.0",
+    "requests>=2.33.1",
     "websockets==15.0.1",
 ]
