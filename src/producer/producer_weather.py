@@ -12,7 +12,7 @@ POLL_INTERVAL = 60 # Polling every 60 seconds to not hit rate limits
 # Not much else is needed besides the bootstrap server and the batch size since it's polling not a websocket stream
 producer = Producer({
     "bootstrap.servers": "kafka:9092",
-    "batch.size": 65536
+    "batch.size": 65536 # 64 KB
 })
 
 # Creating a set to track the event ids that we've already seen
