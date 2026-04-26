@@ -1,1 +1,1 @@
-/usr/bin/kafka-topics --create --topic websocket-stream --bootstrap-server kafka:9092
+/usr/bin/kafka-topics --create --topic processed-events --bootstrap-server kafka:9092

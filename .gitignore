@@ -5,3 +5,4 @@
 environment
 flink/jobs/flink-weather/target/
 dependency-reduced-pom.xml
+.vscode
