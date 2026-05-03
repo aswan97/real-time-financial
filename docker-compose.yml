@@ -79,7 +79,7 @@ services:
         condition: service_healthy
 
   python-producer:
-    build: ./src/producer # Points to the directory containing your Dockerfile
+    build: ./src/producer
     depends_on:
       kafka:
         condition: service_healthy  # Waits for the Kafka healthcheck to pass
@@ -88,7 +88,7 @@ services:
       - TRADES_TOPIC=raw-trades 
       - ORDERBOOK_TOPIC=raw-orderbook
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      test: ["CMD", "pgrep", "-f", "producer.py"]
       interval: 10s
       timeout: 5s
       retries: 3

@@ -4,32 +4,6 @@ import websockets
 from confluent_kafka import Producer
 from datetime import datetime, timezone
 import os
-import threading 
-from http.server import HTTPServer, BaseHTTPRequestHandler
-
-# Health Check
-# Track connection state
-health_state = {"connected": False}
-
-class HealthHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        if health_state["connected"]:
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b"OK")
-        else:
-            self.send_response(503)
-            self.end_headers()
-            self.wfile.write(b"NOT CONNECTED")
-
-    # Suppress request logs cluttering your output
-    def log_message(self, format, *args):
-        pass
-
-def start_health_server():
-    server = HTTPServer(("0.0.0.0", 8080), HealthHandler)
-    server.serve_forever()
-
 
 STREAM_URL = "wss://advanced-trade-ws.coinbase.com/ws"
 RAW_TOPIC = os.environ.get("TRADES_TOPIC", "raw-trades")
@@ -127,7 +101,6 @@ async def market_trades_event_stream():
             async with websockets.connect(STREAM_URL, max_size=100*1024*1024) as ws:
                 await ws.send(MARKET_TRADES_SUBSCRIBE_MSG)
                 print("Connected!")
-                health_state["connected"] = True
                 retry_delay = 1
                 async for message in ws:
                     try:
@@ -138,7 +111,6 @@ async def market_trades_event_stream():
                         continue
 
         except (websockets.WebSocketException, asyncio.CancelledError) as exc:
-            health_state["connected"] = False
             if isinstance(exc, asyncio.CancelledError):
                 return
             print(f"Connection error trades: {exc}. Retrying in {retry_delay}s..." )
@@ -170,10 +142,7 @@ async def orderbook_event_stream():
             retry_delay = min(retry_delay * 2, 60)
 
 async def main():
-
-    health_thread = threading.Thread(target=start_health_server, daemon=True)
-    health_thread.start()
-
+    
     try:
         await asyncio.gather(
             market_trades_event_stream(),
