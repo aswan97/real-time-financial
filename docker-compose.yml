@@ -60,7 +60,7 @@ services:
       kafka:
         condition: service_healthy
     volumes:
-      - /Users/andrewswan/Documents/projects/real-time-financial/kafka:/kafka 
+      - ./kafka:/kafka 
     command: "bash /kafka/setup-topics.sh"
     restart: on-failure
 

@@ -107,12 +107,12 @@ async def handle_orderbook():
             bids = [u for u in updates if u["side"] == "bid"]
             asks = [u for u in updates if u["side"] == "offer"]
 
-            # Trim to top 10 levels before publishing
+            # Trim to top 15 levels before publishing
             orderbook_msg = {
                 "product_id": product_id,
                 "type": event.get("type"),  # "snapshot" or "update"
-                "bids": sorted(bids, key=lambda x: float(x["price_level"]), reverse=True)[:10],
-                "asks": sorted(asks, key=lambda x: float(x["price_level"]))[:10],
+                "bids": sorted(bids, key=lambda x: float(x["price_level"]), reverse=True)[:15],
+                "asks": sorted(asks, key=lambda x: float(x["price_level"]))[:15],
                 "ingested_at": ingested_at
             }
 

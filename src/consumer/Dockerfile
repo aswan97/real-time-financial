@@ -4,4 +4,4 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 RUN mkdir -p /app/data
 COPY . .
-CMD ["python", "consumer_financial.py"]
+CMD ["python", "consumer.py"]
