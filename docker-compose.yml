@@ -30,6 +30,10 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_DEFAULT_REPLICATION_FACTOR: 1
       KAFKA_NUM_PARTITIONS: 3
+
+      # Config for throughout
+      KAFKA_MESSAGE_MAX_BYTES: 10485760
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 10485760
     
       # Storage
       KAFKA_LOG_DIRS: /var/lib/kafka/data 
@@ -49,18 +53,16 @@ services:
       retries: 5
       start_period: 30s
 
-  # Service to create the topic once the kafka container is healthy
-  #kafka-init:
-  #  image: confluentinc/cp-kafka:7.9.0
-  #  container_name: kafka-init
-  #  depends_on:
-  #    kafka:
-  #      condition: service_healthy
-  #  volumes:
-  #    - /Users/andrewswan/Documents/python_real_time/kafka:/kafka # mounts your local folder into the container, using the full path
-  #  command: "bash /kafka/setup-topics.sh"
-  #  restart: on-failure # retries if Kafka isn't quite ready yet
-  
+  kafka-init:
+    image: confluentinc/cp-kafka:7.9.0
+    container_name: kafka-init 
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./kafka:/kafka 
+    command: "bash /kafka/setup-topics.sh"
+    restart: on-failure
 
   # Defining the KAFKA UI service to access locally
   kafka-ui:
@@ -77,15 +79,37 @@ services:
         condition: service_healthy
 
   python-producer:
-    build: /Users/andrewswan/Documents/projects/real_time_financial/src/producer # Points to the directory containing your Dockerfile
+    build: ./src/producer # Points to the directory containing your Dockerfile
     depends_on:
       kafka:
         condition: service_healthy  # Waits for the Kafka healthcheck to pass
     environment:
       - KAFKA_BROKER=kafka:9092
-      - TOPIC_NAME=websocket-stream
+      - TRADES_TOPIC=raw-trades 
+      - ORDERBOOK_TOPIC=raw-orderbook
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s   # gives producer time to connect before first check   
     restart: on-failure
- 
+
+  python-consumer:
+    build: ./src/consumer
+    depends_on:
+      kafka:
+        condition: service_healthy
+      python-producer:
+        condition: service_healthy
+    environment:
+      - KAFKA_BROKER=kakfa:9092
+      - TRADES_TOPIC=raw-trades 
+      - ORDERBOOK_TOPIC=raw-orderbook
+      - FEATURES_TOPIC=features
+    restart: on-failure
+
 volumes:
   kafka_data:
     driver: local
+
