@@ -96,7 +96,11 @@ services:
     restart: on-failure
 
   python-consumer:
-    build: ./src/consumer
+    build: 
+      context: . # Build context of the root project directory
+      dockerfile: ./src/consumer/Dockerfile
+    env_file:
+     - ./src/consumer/.env
     depends_on:
       kafka:
         condition: service_healthy
@@ -107,9 +111,15 @@ services:
       - TRADES_TOPIC=raw-trades 
       - ORDERBOOK_TOPIC=raw-orderbook
       - FEATURES_TOPIC=features
+      - AWS_REGION=us-east-1
+      - S3_BUCKET=real-time-financial-features-938854116035-us-east-1-an
+    volumes:
+      - consumer_data:/app/data
     restart: on-failure
 
 volumes:
   kafka_data:
+    driver: local
+  consumer_data:
     driver: local
 
