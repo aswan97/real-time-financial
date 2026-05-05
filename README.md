@@ -77,6 +77,11 @@ Coinbase WebSocket API
 │   ├── Dockerfile
 │   ├── consumer.py        # Kafka consumer + feature engineering + S3 writer
 │   └── requirements.txt
+├── terraform/
+│   ├── main.tf            # Terraform files to deploy the AWS infrastructure
+│   ├── variables.tf 
+│   ├── providers.tf           
+│   └── outputs.tf
 ├── kafka/
 │   └── setup-topics.sh    # Kafka topic creation
 ├── docker-compose.yml     # Orchestrates all services
@@ -104,6 +109,9 @@ AWS_REGION=us-east-1
 S3_BUCKET_NAME=your_bucket_name
 KAFKA_BOOTSTRAP_SERVERS=kafka:9092
 ```
+
+## Deploy the AWS infrastructure (If you want to run a production set-up)
+*Coming Soon*
 
 ### Run the Pipeline
 
