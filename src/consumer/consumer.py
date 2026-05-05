@@ -205,7 +205,12 @@ try:
             product_id = data.get("product_id")
             if product_id not in windows:
                 continue
-                
+
+            features = compute_features(
+                product_id,
+                float(data["price"]),
+                float(data["size"]),
+                data["side"]
             )
 
             if features:
