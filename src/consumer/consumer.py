@@ -4,12 +4,18 @@ import csv
 from collections import deque
 from confluent_kafka import Consumer, Producer
 from datetime import datetime, timezone
+from common.utilities import upload_file
+import time
 
 KAFKA_BOOTSTRAP = "kafka:9092"
 TRADES_TOPIC = os.environ.get("TRADES_TOPIC", "raw-trades")
 ORDERBOOK_TOPIC = os.environ.get("ORDERBOOK_TOPIC", "raw-orderbook")
 FEATURES_TOPIC = os.environ.get("FEATURES_TOPIC", "features")
-OUTPUT_FILE = "/app/data/features.csv"
+OUTPUT_DIR = "/app/data"
+BUCKET = os.environ["S3_BUCKET"]
+
+FLUSH_INTERVAL = 900
+last_flush = time.time()
 
 # Rolling windows per product — 60 trade window
 windows = {
@@ -38,6 +44,29 @@ consumer = Consumer({
     "auto.offset.reset": "latest"
 })
 consumer.subscribe([TRADES_TOPIC, ORDERBOOK_TOPIC])
+
+# Generate a timestamped file path for each new CSV
+def get_output_path():
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    return f"{OUTPUT_DIR}/features_{ts}.csv"
+
+# Open a new CSV file and return the file handle and writer
+def open_new_csv():
+    """Open a new CSV file and return the file handle and writer."""
+    path = get_output_path()
+    f = open(path, "w", newline="")
+    return path, f, None  # path, file, writer (writer init'd on first row)
+
+# Flush, upload current file to S3, close it, open a new one
+def rotate_and_upload(current_path, current_file):
+    current_file.flush()
+    current_file.close()
+
+    s3_key = f"features/{os.path.basename(current_path)}"
+    upload_file(current_path, BUCKET, s3_key)
+    print(f"Uploaded {current_path} → s3://{s3_key}")
+
+    return open_new_csv()
 
 def compute_features(product_id, price, size, side):
     w = windows[product_id]
@@ -156,57 +185,62 @@ def update_orderbook(msg):
         "imbalance": imbalance
     }
 
-# CSV setup
-csv_file = open(OUTPUT_FILE, "w", newline="")
-csv_writer = None
+# CSV setup — use timestamped file from the start
+current_path, csv_file, csv_writer = open_new_csv()
 
 print("Feature consumer running...")
-while True:
-    msg = consumer.poll(1.0)
-    if msg is None or msg.error():
-        continue
-
-    data = json.loads(msg.value().decode("utf-8"))
-    topic = msg.topic()
-
-    if topic == ORDERBOOK_TOPIC:
-        update_orderbook(data)
-
-    elif topic == TRADES_TOPIC:
-        product_id = data.get("product_id")
-        if product_id not in windows:
+try:
+    while True:
+        msg = consumer.poll(1.0)
+        if msg is None or msg.error():
             continue
 
-        features = compute_features(
-            product_id,
-            float(data["price"]),
-            float(data["size"]),
-            data["side"]
-        )
+        data = json.loads(msg.value().decode("utf-8"))
+        topic = msg.topic()
 
-        if features:
-            # Write to CSV — skip rows where targets aren't ready yet
-            if features["volatility_regime"] is not None:
-                if csv_writer is None:
-                    csv_writer = csv.DictWriter(csv_file, fieldnames=features.keys())
-                    csv_writer.writeheader()
-                csv_writer.writerow(features)
-                csv_file.flush()
+        if topic == ORDERBOOK_TOPIC:
+            update_orderbook(data)
 
-            # Always publish to features topic regardless of label
-            feature_producer.produce(
-                FEATURES_TOPIC,
-                key=product_id, 
-                value=json.dumps(features).encode("utf-8")
+        elif topic == TRADES_TOPIC:
+            product_id = data.get("product_id")
+            if product_id not in windows:
+                continue
+                
             )
-            feature_producer.poll(0)
 
-            print(
-                f"{product_id} | "
-                f"price: {features['last_price']:.2f} | "
-                f"vol: {features['current_volatility']:.6f} | "
-                f"regime: {features['volatility_regime']} | "
-                f"imbalance: {features['order_book_imbalance']:.3f} | "
-                f"rolling_imbalance_mean: {features['rolling_imbalance_mean']:.3f} | "
-                f"rolling_imbalance_std: {features['rolling_imbalance_std']:.3f}"
-            )
+            if features:
+                if features["volatility_regime"] is not None:
+                    if csv_writer is None:
+                        csv_writer = csv.DictWriter(csv_file, fieldnames=features.keys())
+                        csv_writer.writeheader()
+                    csv_writer.writerow(features)
+                    csv_file.flush()
+
+                    # Rotate and upload every 5 minutes
+                    if time.time() - last_flush >= FLUSH_INTERVAL:
+                        current_path, csv_file, csv_writer = rotate_and_upload(current_path, csv_file)
+                        last_flush = time.time()
+
+                # Always publish to features topic regardless of label
+                feature_producer.produce(
+                    FEATURES_TOPIC,
+                    key=product_id,
+                    value=json.dumps(features).encode("utf-8")
+                )
+                feature_producer.poll(0)
+
+                print(
+                    f"{product_id} | "
+                    f"price: {features['last_price']:.2f} | "
+                    f"vol: {features['current_volatility']:.6f} | "
+                    f"regime: {features['volatility_regime']} | "
+                    f"imbalance: {features['order_book_imbalance']:.3f} | "
+                    f"rolling_imbalance_mean: {features['rolling_imbalance_mean']:.3f} | "
+                    f"rolling_imbalance_std: {features['rolling_imbalance_std']:.3f}"
+                )
+
+finally:
+    # Upload any remaining data on shutdown
+    if csv_writer is not None:
+        rotate_and_upload(current_path, csv_file)
+        print("Final flush uploaded on shutdown")
