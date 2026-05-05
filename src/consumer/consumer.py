@@ -196,7 +196,7 @@ while True:
             # Always publish to features topic regardless of label
             feature_producer.produce(
                 FEATURES_TOPIC,
-                key=product_id,
+                key=product_id, 
                 value=json.dumps(features).encode("utf-8")
             )
             feature_producer.poll(0)

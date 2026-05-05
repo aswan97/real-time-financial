@@ -1,9 +1,42 @@
+# Python and env files
 .python-version
 .env
 .venv/
 .DS_Store
 environment
-flink/jobs/flink-weather/target/
-dependency-reduced-pom.xml
 .vscode
+
+# File I use for testing dask code
 tests/test_dask.py
+
+# Terraform files
+
+# Local terraform files
+.terraform/
+.terraform.lock.hcl
+
+# Var files
+*.tfvars
+*.tfvars.json
+
+# State files
+*.tfstate
+*.tfstate.backup
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Override files
+override.tf 
+override.tf.json 
+*_override.tf 
+*_override.tf.json
+
+# CLI config
+.terraformrc 
+terraform.rc
+
+# Any generated private keys
+*.pem 
+dev-app 
