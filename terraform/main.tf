@@ -6,10 +6,16 @@ data "aws_vpc" "default" {
   default = true
 }
 
-data "aws_subnets" "default" {
+# AWS Subnet to use az
+data "aws_subnet" "public" {
   filter {
     name   = "vpc-id"
     values = [data.aws_vpc.default.id]
+  }
+
+  filter {
+    name   = "availabilityZone"
+    values = [var.availability_zone]
   }
 }
 
@@ -79,7 +85,7 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 resource "aws_instance" "app" {
   ami                    = var.ami_id
   instance_type          = var.instance_type
-  subnet_id              = data.aws_subnets.default.ids[0]
+  subnet_id              = data.aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.app.id]
   key_name               = var.key_pair_name
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
@@ -91,13 +97,27 @@ resource "aws_instance" "app" {
     encrypted             = true
   }
 
+  # Logic to deploy docker compose 
   user_data = <<-EOF
   #!/bin/bash
   apt update -y
-  apt install -y apache2
-  systemctl start apache2
-  systemctl enable apache2
-  echo "<h1>Hello from ${var.environment}</h1>" > /var/www/html/index.html
+  apt install -y curl git
+  
+  # Install Docker
+  curl -fsSL https://get.docker.com | sh
+
+  systemctl start docker
+  systemctl enable docker
+  usermod -aG docker ubuntu
+
+  git clone https://github.com/aswan97/real-time-financial.git /app
+  cd /app
+
+  cat > .env <<ENV
+  S3_BUCKET_NAME=${data.aws_s3_bucket.uploads.bucket}
+  AWS_REGION=${var.aws_region}
+  ENV
+
 EOF
 
   tags = {
@@ -116,4 +136,58 @@ resource "aws_eip" "app" {
     Name        = "${var.environment}-app-eip"
     Environment = var.environment
   }
+}
+
+# S3 bucket
+data "aws_s3_bucket" "uploads" {
+  bucket = "${var.s3_bucket_name}"
+}
+
+resource "aws_s3_bucket_versioning" "uploads" {
+  bucket = data.aws_s3_bucket.uploads.id 
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "uploads" {
+  bucket = data.aws_s3_bucket.uploads.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+# Private S3 bucket 
+resource "aws_s3_bucket_public_access_block" "uploads" {
+  bucket                  = data.aws_s3_bucket.uploads.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# IAM policy for the EC2 to upload files to S3
+resource "aws_iam_role_policy" "s3_upload" {
+  name = "${var.environment}-s3-upload"
+  role = aws_iam_role.ec2_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "s3:PutObject",
+        "s3:PutObjectAcl",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ]
+      Resource = [
+        data.aws_s3_bucket.uploads.arn,
+        "${data.aws_s3_bucket.uploads.arn}/*"
+      ]
+    }]
+  })
 }

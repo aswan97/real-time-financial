@@ -19,3 +19,8 @@ output "ssh_command" {
   description = "SSH command to connect"
   value       = "ssh -i ~/.ssh/${var.key_pair_name} ubuntu@${aws_eip.app.public_ip}"
 }
+
+output "s3_bucket_name" {
+  description = "S3 bucket for CSV uploads"
+  value       = data.aws_s3_bucket.uploads.bucket
+}
