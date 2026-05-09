@@ -234,16 +234,6 @@ try:
                 )
                 feature_producer.poll(0)
 
-                print(
-                    f"{product_id} | "
-                    f"price: {features['last_price']:.2f} | "
-                    f"vol: {features['current_volatility']:.6f} | "
-                    f"regime: {features['volatility_regime']} | "
-                    f"imbalance: {features['order_book_imbalance']:.3f} | "
-                    f"rolling_imbalance_mean: {features['rolling_imbalance_mean']:.3f} | "
-                    f"rolling_imbalance_std: {features['rolling_imbalance_std']:.3f}"
-                )
-
 finally:
     # Upload any remaining data on shutdown
     if csv_writer is not None:
