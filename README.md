@@ -11,7 +11,7 @@ Coinbase WebSocket API
         │
         ▼
 ┌──────────────────────────────────────────────────────┐
-│                 EC2 (r8g) — Docker Compose           │
+│                 EC2 (m7g.large) — Docker Compose           │
 │                                                      │
 │  ┌─────────────────┐                                 │
 │  │  Producer       │  (Python / WebSocket)           │
@@ -156,7 +156,7 @@ Reads from `raw-trades` and `raw-orderbook`, applies feature engineering logic (
 
 ## Roadmap
 
-- [ ] Deploy containerized microservices to EC2 (r8g) with Docker Compose on AWS
+- [ ] Deploy containerized microservices to EC2 (m7g.large) with Docker Compose on AWS
 - [ ] XGBoost model for price trend prediction trained on S3 features
 - [ ] SageMaker endpoint for real-time inference
 - [ ] Grafana dashboard for pipeline observability
