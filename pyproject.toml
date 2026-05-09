@@ -8,10 +8,13 @@ dependencies = [
     "boto3>=1.43.2",
     "confluent-kafka==2.14.0",
     "dask>=2026.3.0",
+    "joblib>=1.5.3",
     "numpy>=2.4.4",
     "pandas>=3.0.2",
     "pyarrow>=24.0.0",
     "python-dotenv>=1.2.2",
     "requests>=2.33.1",
+    "scikit-learn>=1.8.0",
     "websockets==15.0.1",
+    "xgboost>=3.2.0",
 ]
