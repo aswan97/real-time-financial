@@ -192,6 +192,12 @@ wheels = [
 ]
 
 [[package]]
+name = "logging"
+version = "0.4.9.6"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/93/4b/979db9e44be09f71e85c9c8cfc42f258adfb7d93ce01deed2788b2948919/logging-0.4.9.6.tar.gz", hash = "sha256:26f6b50773f085042d301085bd1bf5d9f3735704db9f37c1ce6d8b85c38f2417", size = 96029, upload-time = "2013-06-04T23:43:22.086Z" }
+
+[[package]]
 name = "numpy"
 version = "2.4.4"
 source = { registry = "https://pypi.org/simple" }
@@ -358,6 +364,7 @@ dependencies = [
     { name = "confluent-kafka" },
     { name = "dask" },
     { name = "joblib" },
+    { name = "logging" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "pyarrow" },
@@ -374,6 +381,7 @@ requires-dist = [
     { name = "confluent-kafka", specifier = "==2.14.0" },
     { name = "dask", specifier = ">=2026.3.0" },
     { name = "joblib", specifier = ">=1.5.3" },
+    { name = "logging", specifier = ">=0.4.9.6" },
     { name = "numpy", specifier = ">=2.4.4" },
     { name = "pandas", specifier = ">=3.0.2" },
     { name = "pyarrow", specifier = ">=24.0.0" },

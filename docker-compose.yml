@@ -35,7 +35,7 @@ services:
       KAFKA_MESSAGE_MAX_BYTES: 1048576 # 1MB
       KAFKA_REPLICA_FETCH_MAX_BYTES: 1048576
       # Performance tuning
-      KAFKA_HEAP_OPTS: "-Xmx512m -Xms512m"
+      KAFKA_HEAP_OPTS: "-Xmx2G -Xms2G" # Increased heap size so the gc runs less frequently
       KAFKA_JVM_PERFORMANCE_OPTS: "-XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35"
     
       # Storage
@@ -46,7 +46,7 @@ services:
 
     # Defining the storage volume
     volumes:
-    - kafka_data:/var/lib/kafka/data
+    - kafka_data:/var/lib/kafka/data:cached # Reduces virtualization overhead required to sync files (container caches read operations)
 
     # Health check of the cluster 
     healthcheck:
@@ -117,7 +117,7 @@ services:
       - AWS_REGION=us-east-1
       - S3_BUCKET=real-time-financial-features-938854116035-us-east-1-an
     volumes:
-      - consumer_data:/app/data
+      - consumer_data:/app/data:cached
     restart: on-failure
 
 volumes:

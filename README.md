@@ -11,7 +11,7 @@ Coinbase WebSocket API
         │
         ▼
 ┌──────────────────────────────────────────────────────┐
-│                 EC2 (m7g.large) — Docker Compose           │
+│                 EC2 (m7g.large) — Docker Compose     │
 │                                                      │
 │  ┌─────────────────┐                                 │
 │  │  Producer       │  (Python / WebSocket)           │
