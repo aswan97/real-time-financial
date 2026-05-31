@@ -4,6 +4,7 @@
 .venv/
 .DS_Store
 .vscode
+*__pycache__
 
 # File I use for testing dask code
 tests/test_dask.py
